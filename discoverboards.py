@@ -3,12 +3,14 @@ import time
 import json
 import argparse
 import sys
+from pathlib import Path
 
 import hubcontrol
 import config
 
 NUM_PORTS = 7
 PORT_DELAY = 2.5
+
 
 class DiscoverParser(argparse.ArgumentParser):
     def __init__(self, standalone=False):
@@ -31,23 +33,26 @@ class DiscoverParser(argparse.ArgumentParser):
     def parse(self, arg_ns=None):
         return self.parse_args(namespace=arg_ns)
 
-def load_device_list(filename = f"{config.PYTHON_PATH}jsons/device_list.json"):
+
+def load_device_list(filename=f"{config.PYTHON_PATH}jsons/device_list.json"):
     try:
         with open(filename, "r") as f:
             return json.load(f)
     except FileNotFoundError:
+        print("Could not find device_list.json")
         return {}
 
+
 def identify_device(serial_number, device_list,
-                    unknown_devices_file = f"{config.PYTHON_PATH}jsons/unknown_devices"):
+                    unknown_devices_file=f"{config.PYTHON_PATH}jsons/unknown_devices"):
     device_name = device_list.get(serial_number, {"name": "unknown_device"})
     if device_name["name"] == "unknown_device":
-        try:
-            with open(unknown_devices_file, "a") as f:
-                print(f"Unknown serial number: {serial_number}", file=f)
-        except FileNotFoundError:
-            pass
+        output_file = Path(unknown_devices_file)
+        output_file.parent.mkdir(parents=True, exist_ok=True)
+        with open(output_file, "a") as f:
+            print(f"Unknown device with serial number: {serial_number}", file=f)
     return device_name
+
 
 def snapshot_devices():
     snapshot = {}
@@ -64,11 +69,13 @@ def snapshot_devices():
             continue  # Ignore unreadable devices
     return snapshot
 
+
 def detect_new_device(before, after):
     # Return any serial number(s) present in after but not in before
     return {s: after[s] for s in after if s not in before}
 
-def probe_port(port, hubcontroller = hubcontrol.HubController()):
+
+def probe_port(port, hubcontroller=hubcontrol.HubController()):
     print(f"\nProbing port {port}")
     before = snapshot_devices()
 
@@ -90,7 +97,8 @@ def probe_port(port, hubcontroller = hubcontrol.HubController()):
     hubcontroller.set_power(port, False)
     return new_devices
 
-def map_ports(hubcontroller = hubcontrol.HubController()):
+
+def map_ports(hubcontroller=hubcontrol.HubController()):
     hubcontroller.set_power('a', False)
     device_list = load_device_list()
 
@@ -117,9 +125,10 @@ def map_ports(hubcontroller = hubcontrol.HubController()):
         "Ports": ports_list
     }
 
-def run(device_map_location = f"{config.PYTHON_PATH}jsons/",
-        standalone = False, h_serial = None):
-    parser = DiscoverParser(standalone = standalone)
+
+def run(device_map_location=f"{config.PYTHON_PATH}jsons/",
+        standalone=False, h_serial=None):
+    parser = DiscoverParser(standalone=standalone)
     if standalone:
         args = parser.parse()
         hub_serial = args.serial
@@ -133,11 +142,16 @@ def run(device_map_location = f"{config.PYTHON_PATH}jsons/",
     except Exception as e:
         parser.error(str(e))
     device_map = map_ports(hubcontroller)
-    with open(f"{device_map_location}device_map_discover.json", "w") as f:
+
+    output_file = Path(f"{device_map_location}device_map_discover.json")
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    with open(output_file, "w") as f:
         json.dump(device_map, f, indent=2)
 
+
 def main():
-    run(standalone = True)
+    run(standalone=True)
+
 
 if __name__ == "__main__":
     main()

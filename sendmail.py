@@ -8,7 +8,8 @@ import config
 
 password = os.environ["EMAIL_APP_PASSWORD"]
 
-def send_email(sent_file = None):
+
+def send_email(sent_file=None):
     # Load JSON data
     with open(f"{config.PYTHON_PATH}jsons/email_cfg.json", "r") as file:
         cfg = json.load(file)
@@ -23,8 +24,8 @@ def send_email(sent_file = None):
         board = test["Board name"]
         board_serial = test["Board serial"]
         status = test["Test passed"]
-        icon = "✅" if status == True else "❌"
-        color = "green" if status == True else "red"
+        icon = "✅" if status is True else "❌"
+        color = "green" if status is True else "red"
         rows += (f"<tr>"
                  f"<td>{port}</td>"
                  f"<td>{board}</td>"
@@ -94,8 +95,10 @@ def send_email(sent_file = None):
     except Exception as e:
         print(f"Failed to send email: {e}")
 
+
 def main():
     send_email()
+
 
 if __name__ == "__main__":
     main()

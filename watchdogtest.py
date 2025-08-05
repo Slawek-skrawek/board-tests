@@ -13,13 +13,13 @@ import hubcontrol
 import targetscripts
 import config
 
-SERIAL_PORT = '/dev/ttyACM0'
 SERIAL_RATE = 115200
 PORT_DELAY = 3
 
 done = threading.Event()
 stop_event = threading.Event()
 context = pyudev.Context()
+
 
 class WatchdogParser(argparse.ArgumentParser):
     def __init__(self, standalone=False):
@@ -29,7 +29,7 @@ class WatchdogParser(argparse.ArgumentParser):
         self.add_argument(
             '-d', '--discover',
             action='store_true',
-            help="discover connected devices",
+            help="discover connected devices before testing",
             dest='discover')
         self.add_argument(
             '-s', '--serial-number',
@@ -46,6 +46,7 @@ class WatchdogParser(argparse.ArgumentParser):
 
     def parse(self, arg_ns=None):
         return self.parse_args(namespace=arg_ns)
+
 
 def watchdog_search(ser):
     if ser is None:
@@ -64,8 +65,8 @@ def watchdog_search(ser):
             stop_event.set()
             print("Serial exception occurred. Reading from serial failed.")
 
+
 def watchdog_test(board_name, board_serial):
-    target_name = targetscripts.create_target_name(board_name, "watchdog")
     ports = serial.tools.list_ports.comports()
     ser = None
     device_serial = None
@@ -82,9 +83,14 @@ def watchdog_test(board_name, board_serial):
     print(f"Found device serial: {device_serial}")
     print(f"Target board serial: {board_serial}")
     if device_serial == board_serial:
+        target_name = targetscripts.create_target_name(board_name, "boot")
+        targetscripts.full_create_target(target_name, board_name, "boot", print_output=False)
+        targetscripts.load_image(target_name, print_output=False)
+        target_name = targetscripts.create_target_name(board_name, "watchdog")
+        targetscripts.full_create_target(target_name, board_name, "watchdog", print_output=False)
         targetscripts.load_image(target_name, print_output=False)
         print("Watchdog test started.")
-        t = threading.Thread(target=watchdog_search, args=(ser, ), daemon=True)
+        t = threading.Thread(target=watchdog_search, args=(ser, ), daemon=False)
         t.start()
         timeout = 60
         start_time = time.time()
@@ -93,6 +99,7 @@ def watchdog_test(board_name, board_serial):
                 break
             time.sleep(0.2)
         if done.is_set():
+            stop_event.set()
             print("Watchdog test passed.")
         elif stop_event.is_set():
             print("Watchdog test failed.")
@@ -109,7 +116,7 @@ def watchdog_test(board_name, board_serial):
     return done.is_set()
 
 
-def watchdogs_hub(device_map_location = f"{config.PYTHON_PATH}jsons/", discovered = False):
+def watchdogs_hub(device_map_location=f"{config.PYTHON_PATH}jsons/", discovered=False):
     if discovered:
         with open(f"{device_map_location}device_map_discover.json", "r") as f:
             device_map = json.load(f)
@@ -124,9 +131,10 @@ def watchdogs_hub(device_map_location = f"{config.PYTHON_PATH}jsons/", discovere
     hub_controller.set_power('a', False)
     time.sleep(PORT_DELAY)
 
+    print(f"Testing hub {hub_serial}")
     board_pass = []
     for port in ports:
-        print(f"\nTesting port {port["Port"]}")
+        print(f"\nTesting port {port['Port']}")
         board_name = port["Name"]
         board_serial = port['Serial_number']
         number = port["Port"]
@@ -153,14 +161,15 @@ def watchdogs_hub(device_map_location = f"{config.PYTHON_PATH}jsons/", discovere
         "Watchdog tests": board_pass
     }
     now = (datetime.datetime.now())
-    result_file = f"{device_map_location}watchdog_test_{now.strftime("%Y-%m-%d_%H-%M")}.json"
+    result_file = f"{device_map_location}watchdog_test_{now.strftime('%Y-%m-%d_%H-%M')}.json"
     with open(result_file, "w") as f:
         json.dump(watchdog_test_result, f, indent=2)
     return result_file
 
-def run(standalone = False, h_serial = None):
+
+def run(standalone=False, h_serial=None):
     program_start = time.perf_counter()
-    print("Watchdog tests for hub started.")
+    print("Watchdog tests for hub started.\n")
     parser = WatchdogParser(standalone=standalone)
     if standalone:
         args = parser.parse()
@@ -179,19 +188,21 @@ def run(standalone = False, h_serial = None):
     result_file = watchdogs_hub(discovered=discovered)
     program_end = time.perf_counter()
 
-    program_time = program_discover - program_start
+    print("\nWatchdog tests for hub ended.")
     if discovered:
+        program_time = program_discover - program_start
         print(f"Discover time:  {program_time:.4f} seconds")
     program_time = program_end - program_discover
     print(f"Watchdogs test time:  {program_time:.4f} seconds")
     program_time = program_end - program_start
     print(f"Program time:  {program_time:.4f} seconds")
-    print("Watchdog tests for hub ended.")
 
     return result_file
 
+
 def main():
-    run(standalone = True)
+    run(standalone=True)
+
 
 if __name__ == "__main__":
     main()

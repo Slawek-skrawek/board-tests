@@ -1,6 +1,7 @@
 import subprocess
 import traceback
 
+
 def run_cmd(cmd, check=True):
     """Runs a shell command and returns (success, output)."""
     try:

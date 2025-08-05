@@ -1,12 +1,15 @@
 import argparse
+import platform
+
 import hid
 import sys
 
 VENDOR_ID = 0xc0ca
 PRODUCT_ID = 0xc001
 
+
 class CustomParser(argparse.ArgumentParser):
-    def __init__(self, standalone = False):
+    def __init__(self, standalone=False):
         super().__init__(
             description="Control power state of individual ports on a selected USB hub",
             formatter_class=argparse.RawTextHelpFormatter)
@@ -72,6 +75,13 @@ class HubController:
         hubs = hid.enumerate(VENDOR_ID, PRODUCT_ID)
         print("Attached hub controllers:")
         for hub in hubs:
+            if platform.system() == "Windows":
+                if isinstance(hub['path'], bytes):
+                    path = hub['path'].decode()
+                else:
+                    path = hub['path']
+                if path.endswith("\\KBD"):
+                    continue
             i = i + 1
             print(f"{i}. Hub controller with serial number: {hub['serial_number']}")
         if i == 0:
@@ -87,6 +97,13 @@ class HubController:
         matching_serial = False
         ser = None
         for hub in hid.enumerate(self.vid, self.pid):
+            if platform.system() == "Windows":
+                if isinstance(hub['path'], bytes):
+                    path = hub['path'].decode()
+                else:
+                    path = hub['path']
+                if path.endswith("\\KBD"):
+                    continue
             found_hubs += 1
             ser = hub['serial_number']
             if self.serial:
@@ -118,14 +135,23 @@ class HubController:
                 if port == 'a':
                     for port in range(1, len(feature_report)):
                         port_state = feature_report[port]
-                        print(f"Downstream port {port} on hub {self.serial} "
-                              f"is {'ON' if port_state == 49
-                              else 'OFF' if port_state == 48 else 'Undefined'}.")
+                        if port_state == 49:
+                            power_txt = 'ON'
+                        elif port_state == 48:
+                            power_txt = 'OFF'
+                        else:
+                            power_txt = 'Undefined'
+                        print(f"Downstream port {port} on hub {self.serial} is {power_txt}.")
                 elif port:
                     port_state = feature_report[int(port)]
+                    if port_state == 49:
+                        power_txt = 'ON'
+                    elif port_state == 48:
+                        power_txt = 'OFF'
+                    else:
+                        power_txt = 'Undefined'
                     print(f"Downstream port {int(port)} on hub {self.serial} "
-                          f"is {'ON' if port_state == 49
-                          else 'OFF' if port_state == 48 else 'Undefined'}.")
+                          f"is {power_txt}.")
             else:
                 self.parser.error("hub controller not found")
         else:
@@ -147,7 +173,7 @@ class HubController:
         if len(port_set) == 8:
             for index in range(1, len(self.port_set)):
                 self.port_set[index] = ord('1' if port_set[index - 1] == '1' else
-                                      '0' if port_set[index - 1] == '0' else 'x')
+                                           '0' if port_set[index - 1] == '0' else 'x')
         else:
             self.parser.error("expected 8-character port_set")
 
@@ -171,7 +197,7 @@ class HubController:
 
         arguments = vars(self.args).copy()
         arguments.pop('serial')
-        if len(vars(self.args)) == 0 or all(v is None or v == False for v in arguments.values()):
+        if len(vars(self.args)) == 0 or all(v is None or v is False for v in arguments.values()):
             if self.serial:
                 self.parser.error("Argument -s/--serial-number has no usage without another argument")
             self.parser.print_usage()
@@ -190,7 +216,7 @@ class HubController:
         if self.args.pow_down:
             self.set_cmd_ports(self.args.pow_down, False)
 
-        if self.args.pow_up or self.args.pow_down or self.args.port_set :
+        if self.args.pow_up or self.args.pow_down or self.args.port_set:
             self.set_usb_power()
         if self.args.get_state:
             self.current_port_state()
