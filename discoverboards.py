@@ -1,15 +1,15 @@
-import usb
 import time
 import json
 import argparse
 import sys
+from serial.tools import list_ports
 from pathlib import Path
 
 import hubcontrol
 import config
 
 NUM_PORTS = 7
-PORT_DELAY = 2.5
+PORT_DELAY = 3
 
 
 class DiscoverParser(argparse.ArgumentParser):
@@ -56,17 +56,16 @@ def identify_device(serial_number, device_list,
 
 def snapshot_devices():
     snapshot = {}
-    for dev in usb.core.find(find_all=True):
-        try:
-            serial = usb.util.get_string(dev, dev.iSerialNumber)
-            snapshot[serial] = {
-                "vendor_id": f"{dev.idVendor:04x}",
-                "product_id": f"{dev.idProduct:04x}",
-                "manufacturer": usb.util.get_string(dev, dev.iManufacturer),
-                "product": usb.util.get_string(dev, dev.iProduct),
+    ports = list_ports.comports()
+    for port in ports:
+        if port.serial_number is not None:
+            snapshot[port.serial_number] = {
+                "name": port.name,
+                "vendor_id": f"{port.vid:04x}",
+                "product_id": f"{port.pid:04x}",
+                "manufacturer": port.manufacturer,
+                "product": port.product,
             }
-        except Exception:
-            continue  # Ignore unreadable devices
     return snapshot
 
 

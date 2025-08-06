@@ -5,7 +5,6 @@ import threading
 import time
 import serial
 import serial.tools.list_ports
-import pyudev
 import json
 
 import discoverboards
@@ -18,7 +17,6 @@ PORT_DELAY = 3
 
 done = threading.Event()
 stop_event = threading.Event()
-context = pyudev.Context()
 
 
 class WatchdogParser(argparse.ArgumentParser):
@@ -70,19 +68,26 @@ def watchdog_test(board_name, board_serial):
     ports = serial.tools.list_ports.comports()
     ser = None
     device_serial = None
+    potential_device = None
     for port in ports:
-        if 'ttyACM' in port.device:
-            device = pyudev.Devices.from_device_file(context, port.device)
-            device_serial = device.get('ID_SERIAL_SHORT')
-            if device_serial == board_serial:
-                ser = serial.Serial(port.device, SERIAL_RATE)
+        if port.serial_number is not None:
+            device_serial = port.serial_number
+            if board_serial == device_serial:
+                if potential_device is None:
+                    potential_device = port
+                elif port.location.endswith(".0"):
+                    potential_device = port
+
+    if potential_device is not None:
+        device_serial = potential_device.serial_number
+        ser = serial.Serial(potential_device.device, SERIAL_RATE)
 
     done.clear()
     stop_event.clear()
 
     print(f"Found device serial: {device_serial}")
     print(f"Target board serial: {board_serial}")
-    if device_serial == board_serial:
+    if potential_device is not None:
         target_name = targetscripts.create_target_name(board_name, "boot")
         targetscripts.full_create_target(target_name, board_name, "boot", print_output=False)
         targetscripts.load_image(target_name, print_output=False)

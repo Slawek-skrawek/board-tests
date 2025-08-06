@@ -1,6 +1,4 @@
 import argparse
-import platform
-
 import hid
 import sys
 
@@ -75,7 +73,7 @@ class HubController:
         hubs = hid.enumerate(VENDOR_ID, PRODUCT_ID)
         print("Attached hub controllers:")
         for hub in hubs:
-            if platform.system() == "Windows":
+            if sys.platform == 'win32':
                 if isinstance(hub['path'], bytes):
                     path = hub['path'].decode()
                 else:
@@ -97,7 +95,7 @@ class HubController:
         matching_serial = False
         ser = None
         for hub in hid.enumerate(self.vid, self.pid):
-            if platform.system() == "Windows":
+            if sys.platform == 'win32':
                 if isinstance(hub['path'], bytes):
                     path = hub['path'].decode()
                 else:
