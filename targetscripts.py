@@ -25,7 +25,10 @@ def target_exists(name):
 
 def create_target(target_name, print_output=False):
     print(f"Creating target: {target_name}")
-    success, output = command.run_cmd(f"newt target create {target_name}")
+    success, output = command.run_cmd(f"newt target create {target_name}", show_traceback=False)
+    if not success and "Target already exists" in output:
+        print(f"Ignored {output.strip()}")
+        success = True
     if not success or print_output:
         print(output)
     return success

@@ -98,6 +98,7 @@ def probe_port(port, hubcontroller=hubcontrol.HubController()):
 
 
 def map_ports(hubcontroller=hubcontrol.HubController()):
+    print(f"Probing ports on hub {hubcontroller.serial}")
     hubcontroller.set_power('a', False)
     device_list = load_device_list()
 
@@ -119,6 +120,7 @@ def map_ports(hubcontroller=hubcontrol.HubController()):
                 'Name': name
             })
             print(f"Port {port}: {serial} - {name}")
+    print("---------------------------\n")
     return {
         "Hub serial": hubcontroller.serial,
         "Ports": ports_list
