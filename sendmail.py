@@ -3,17 +3,10 @@ import smtplib
 from email.message import EmailMessage
 import mimetypes
 import os
-import sys
 import config
-
-password = os.environ["EMAIL_APP_PASSWORD"]
 
 
 def send_email(sent_file=None):
-    # Load JSON data
-    with open(f"{config.PYTHON_PATH}jsons/email_cfg.json", "r") as file:
-        cfg = json.load(file)
-
     with open(sent_file, "r") as file:
         results = json.load(file)
 
@@ -55,15 +48,15 @@ def send_email(sent_file=None):
 
     # Compose the email
     msg = EmailMessage()
-    msg["From"] = cfg["sender"]
+    msg["From"] = config.SENDER
 
-    recipients = cfg["recipients"]
+    recipients = config.RECIPIENTS
     if isinstance(recipients, list):
         msg["To"] = ", ".join(recipients)
     else:
         msg["To"] = recipients
         recipients = [recipients]  # Ensure it's a list for sending
-    msg["Subject"] = cfg["subject"]
+    msg["Subject"] = config.SUBJECT
     msg.set_content("This is a fallback plain-text version.")
     msg.add_alternative(html_body, subtype='html')
 
@@ -85,11 +78,12 @@ def send_email(sent_file=None):
             file_name = os.path.basename(attachment_path)
             msg.add_attachment(file_data, maintype=maintype, subtype=subtype, filename=file_name)
 
+    password = config.PASSWORD
     # Send the email
     try:
-        with smtplib.SMTP(cfg["smtp_server"], cfg["smtp_port"]) as server:
+        with smtplib.SMTP(config.SMTP_SERVER, config.SMTP_PORT) as server:
             server.starttls()
-            server.login(cfg["username"], password)
+            server.login(config.USERNAME, password)
             server.send_message(msg, to_addrs=recipients)
         print("Email sent successfully.")
     except Exception as e:

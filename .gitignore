@@ -2,3 +2,4 @@
 /jsons/watchdog_test_*.json
 __pycache__
 unknown_devices
+config.py

@@ -1,0 +1,17 @@
+# Fill in your data and remove '.sample' from the filename.
+
+BASE_PATH = "/home/workspace/"
+TARGET_PATH = f"{BASE_PATH}myproj/"
+PYTHON_PATH = f"{BASE_PATH}python/"
+
+SENDER = "user@mail.com"
+RECIPIENTS = [
+"recipient1@mail.com",
+"recipient2@mail.com"
+]
+SUBJECT = "Test Email Report Attached"
+BODY = "Please find the report attached."
+SMTP_SERVER = "smtp.mail.com"
+SMTP_PORT = 587
+USERNAME = "user@mail.com"
+PASSWORD = "password"

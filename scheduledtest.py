@@ -4,18 +4,23 @@ import sendmail
 import watchdogtest
 
 
-def run_weekly_test():
-    print("Running weekly test.")
+def run_daily_test():
+    print("Running daily test.")
     result_file = watchdogtest.run(h_serial='2')
     print("Newest file by name: ", result_file)
     sendmail.send_email(result_file)
 
 
-# Schedule the job: every Friday at 18:00
-schedule.every().tuesday.at("18:00").do(run_weekly_test)
+def main():
+    # Schedule the job: every day at 18:00
+    schedule.every().day.at("18:00").do(run_daily_test)
 
-print("Scheduler started. Waiting for jobs...")
+    print("Scheduler started. Waiting for jobs...")
 
-while True:
-    schedule.run_pending()
-    time.sleep(1)  # check every second
+    while True:
+        schedule.run_pending()
+        time.sleep(1)  # check every second
+
+
+if __name__ == "__main__":
+    main()
